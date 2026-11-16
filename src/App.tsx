@@ -161,13 +161,13 @@ export default function App() {
   const [groupSize, setGroupSize] = useState<number>(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem(storageKey("groupSize")) : null;
     const val = stored ? parseInt(stored, 10) : 4;
-    return isNaN(val) ? 4 : Math.max(2, val);
+    return isNaN(val) ? 4 : val;
   });
 
   const [maxKratzer, setMaxKratzer] = useState<number>(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem(storageKey("maxKratzer")) : null;
     const val = stored ? parseInt(stored, 10) : DEFAULT_KRATZER_SETTINGS.maxKratzer;
-    return isNaN(val) ? DEFAULT_KRATZER_SETTINGS.maxKratzer : Math.max(2, val);
+    return isNaN(val) ? DEFAULT_KRATZER_SETTINGS.maxKratzer : val;
   });
 
   const [kratzerLosersPerGroup, setKratzerLosersPerGroup] = useState<number>(() => {
@@ -944,6 +944,9 @@ export default function App() {
   };
 
   const startGroups = () => {
+    if (!Number.isInteger(groupSize) || groupSize < 2 || groupSize > 16) {
+      return;
+    }
     setPreKOState(null);
     setMode("groups");
     setIsDoubleKO(false);
@@ -953,12 +956,22 @@ export default function App() {
 
   const getKratzerSettings = () => ({
     maxKratzer,
-    preferredGroupSize: Math.min(6, Math.max(3, groupSize)),
+    preferredGroupSize: groupSize,
     losersPerGroup: kratzerLosersPerGroup,
     autoShrinkBelow: DEFAULT_KRATZER_SETTINGS.autoShrinkBelow,
   });
 
   const startKratzer = () => {
+    if (
+      !Number.isInteger(groupSize) ||
+      groupSize < 3 ||
+      groupSize > 6 ||
+      !Number.isInteger(maxKratzer) ||
+      maxKratzer < 2 ||
+      maxKratzer > 10
+    ) {
+      return;
+    }
     setPreKOState(null);
     setMode("kratzer");
     setIsDoubleKO(false);
@@ -969,7 +982,7 @@ export default function App() {
 
     const settings = {
       maxKratzer,
-      preferredGroupSize: Math.min(6, Math.max(3, groupSize)),
+      preferredGroupSize: groupSize,
       losersPerGroup: kratzerLosersPerGroup,
       autoShrinkBelow: DEFAULT_KRATZER_SETTINGS.autoShrinkBelow,
     };

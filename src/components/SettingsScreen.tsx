@@ -93,6 +93,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const canStart =
     players.length >= 2 && !players.some((p) => hasDuplicate(p.name, p.id));
 
+  const groupSizeValidForGroups =
+    Number.isInteger(groupSize) && groupSize >= 2 && groupSize <= 16;
+  const groupSizeValidForKratzer =
+    Number.isInteger(groupSize) && groupSize >= 3 && groupSize <= 6;
+  const maxKratzerValid = Number.isInteger(maxKratzer) && maxKratzer >= 2 && maxKratzer <= 10;
+
   return (
     <div
       style={{
@@ -313,24 +319,32 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
       {/* RoundRobin / Gruppen-Einstellungen */}
       <h2 style={{ textAlign: "center", marginBottom: 10 }}>Gruppenmodus (RoundRobin)</h2>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
         <label style={{ flex: 1 }}>
           Gruppengröße:
           <input
             type="number"
-            min={2}
-            max={16}
-            value={groupSize}
+            inputMode="numeric"
+            value={groupSize || ""}
             onChange={(e) => {
-              const val = Number(e.target.value) || 0;
-              const clamped = Math.min(16, Math.max(2, val));
-              setGroupSize(clamped);
+              const raw = e.target.value;
+              if (raw === "") {
+                setGroupSize(0);
+                return;
+              }
+              setGroupSize(Number(raw));
             }}
             style={{
               marginLeft: 8,
               width: 60,
               borderRadius: 6,
-              border: "1px solid #444",
+              border: `2px solid ${
+                groupSizeValidForGroups
+                  ? groupSizeValidForKratzer
+                    ? "#444"
+                    : "#FF9800"
+                  : "#FF5252"
+              }`,
               backgroundColor: "#2a2a2a",
               color: "#eee",
               padding: "0.25rem 0.5rem",
@@ -339,6 +353,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           />
         </label>
       </div>
+      {!groupSizeValidForGroups ? (
+        <small style={{ display: "block", color: "#FF5252", marginBottom: 16 }}>
+          Ungültig — Gruppengröße muss zwischen 2 und 16 liegen.
+        </small>
+      ) : !groupSizeValidForKratzer ? (
+        <small style={{ display: "block", color: "#FF9800", marginBottom: 16 }}>
+          Für Kratzer nur 3–6 erlaubt (RoundRobin: 2–16 ok).
+        </small>
+      ) : (
+        <div style={{ marginBottom: 16 }} />
+      )}
 
       {/* Kratzer-Einstellungen */}
       <h2 style={{ textAlign: "center", marginBottom: 10 }}>Kratzerturnier</h2>
@@ -347,18 +372,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           Max-Kratzer:
           <input
             type="number"
-            min={2}
-            max={10}
-            value={maxKratzer}
+            inputMode="numeric"
+            value={maxKratzer || ""}
             onChange={(e) => {
-              const val = Number(e.target.value) || 4;
-              setMaxKratzer(Math.min(10, Math.max(2, val)));
+              const raw = e.target.value;
+              if (raw === "") {
+                setMaxKratzer(0);
+                return;
+              }
+              setMaxKratzer(Number(raw));
             }}
             style={{
               marginLeft: 8,
               width: 60,
               borderRadius: 6,
-              border: "1px solid #444",
+              border: `2px solid ${maxKratzerValid ? "#444" : "#FF5252"}`,
               backgroundColor: "#2a2a2a",
               color: "#eee",
               padding: "0.25rem 0.5rem",
@@ -389,8 +417,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </select>
         </label>
       </div>
+      {!maxKratzerValid ? (
+        <small style={{ display: "block", color: "#FF5252", marginBottom: 8 }}>
+          Ungültig — Max-Kratzer muss zwischen 2 und 10 liegen.
+        </small>
+      ) : null}
       <small style={{ display: "block", color: "#bbb", marginBottom: 16 }}>
-        Gruppengröße kommt aus dem Feld oben (3–6 empfohlen). Ab unter 12 Spielern
+        Gruppengröße kommt aus dem Feld oben (für Kratzer: 3–6). Ab unter 12 Spielern
         automatisch kleinere Gruppen und 1 Verlierer. Start-Kratzer pro Spieler: 0–2.
         Leben-Anzeige bei Max 4: 3/3 (grün) → 2/3 → 1/3 (orange) → Schwimmt (blau) →
         Ausgeschieden (rot).
@@ -640,15 +673,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </button>
         <button
           onClick={startGroups}
-          disabled={!canStart}
+          disabled={!canStart || !groupSizeValidForGroups}
           style={{
             flex: "1 1 140px",
             padding: "0.5rem 1rem",
             borderRadius: 8,
-            backgroundColor: canStart ? "#00BCD4" : "#555",
+            backgroundColor: canStart && groupSizeValidForGroups ? "#00BCD4" : "#555",
             color: "#fff",
             border: "none",
-            cursor: canStart ? "pointer" : "not-allowed",
+            cursor: canStart && groupSizeValidForGroups ? "pointer" : "not-allowed",
             fontWeight: "bold",
           }}
         >
@@ -656,15 +689,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </button>
         <button
           onClick={startKratzer}
-          disabled={!canStart}
+          disabled={!canStart || !groupSizeValidForKratzer || !maxKratzerValid}
           style={{
             flex: "1 1 140px",
             padding: "0.5rem 1rem",
             borderRadius: 8,
-            backgroundColor: canStart ? "#8BC34A" : "#555",
+            backgroundColor:
+              canStart && groupSizeValidForKratzer && maxKratzerValid ? "#8BC34A" : "#555",
             color: "#fff",
             border: "none",
-            cursor: canStart ? "pointer" : "not-allowed",
+            cursor:
+              canStart && groupSizeValidForKratzer && maxKratzerValid
+                ? "pointer"
+                : "not-allowed",
             fontWeight: "bold",
           }}
         >
@@ -682,6 +719,42 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           }}
         >
           Bitte mindestens 2 Spieler mit eindeutigen Namen hinzufügen.
+        </p>
+      )}
+      {canStart && !groupSizeValidForGroups && (
+        <p
+          style={{
+            color: "#FF5252",
+            marginTop: "1rem",
+            textAlign: "center",
+            fontSize: 13,
+          }}
+        >
+          Gruppengröße korrigieren (2–16), sonst kein Start möglich.
+        </p>
+      )}
+      {canStart && groupSizeValidForGroups && !groupSizeValidForKratzer && (
+        <p
+          style={{
+            color: "#FF9800",
+            marginTop: "0.5rem",
+            textAlign: "center",
+            fontSize: 13,
+          }}
+        >
+          Kratzer starten braucht Gruppengröße 3–6.
+        </p>
+      )}
+      {canStart && !maxKratzerValid && (
+        <p
+          style={{
+            color: "#FF5252",
+            marginTop: "0.5rem",
+            textAlign: "center",
+            fontSize: 13,
+          }}
+        >
+          Max-Kratzer korrigieren (2–10), sonst kein Kratzer-Start möglich.
         </p>
       )}
     </div>
