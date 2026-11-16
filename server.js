@@ -25,9 +25,41 @@ const BUILD_DIR = path.join(__dirname, "build");
 // Metadaten für bis zu 4 Turniere (Slots)
 const TOURNAMENT_SLOTS = ["turnier1", "turnier2", "turnier3", "turnier4"];
 const TOURNAMENTS_FILE = path.join(__dirname, "tournaments-meta.json");
+const MAINTENANCE_FILE = path.join(__dirname, "maintenance.json");
 
 // Mehrere Turniere parallel über Query-Parameter ?t=turnier1 speichern
 const DEFAULT_TOURNAMENT_ID = "default";
+
+function readMaintenance() {
+  try {
+    if (!fs.existsSync(MAINTENANCE_FILE)) {
+      return { enabled: false, message: "Wartungsarbeiten – bitte später erneut versuchen." };
+    }
+    const data = JSON.parse(fs.readFileSync(MAINTENANCE_FILE, "utf8"));
+    return {
+      enabled: !!data.enabled,
+      message:
+        typeof data.message === "string" && data.message.trim()
+          ? data.message.trim()
+          : "Wartungsarbeiten – bitte später erneut versuchen.",
+    };
+  } catch (e) {
+    console.error("Failed to read maintenance file", e);
+    return { enabled: false, message: "Wartungsarbeiten – bitte später erneut versuchen." };
+  }
+}
+
+function writeMaintenance(next) {
+  const payload = {
+    enabled: !!next.enabled,
+    message:
+      typeof next.message === "string" && next.message.trim()
+        ? next.message.trim()
+        : "Wartungsarbeiten – bitte später erneut versuchen.",
+  };
+  fs.writeFileSync(MAINTENANCE_FILE, JSON.stringify(payload, null, 2), "utf8");
+  return payload;
+}
 
 function getStateFile(tournamentId) {
   const raw = typeof tournamentId === "string" && tournamentId.trim().length > 0
@@ -282,6 +314,69 @@ app.post("/login", (req, res) => {
   );
 
   return res.json({ ok: true, token, role: "operator", tournament: { id, name: slot.name } });
+});
+
+/**
+ * Staff auth for site-wide actions (master or operator JWT)
+ */
+function requireStaff(req, res, next) {
+  const payload = extractToken(req);
+  if (!payload || (payload.role !== "master" && payload.role !== "operator")) {
+    return sendError(res, "UNAUTHORIZED");
+  }
+  req.user = payload;
+  return next();
+}
+
+/**
+ * Block public API while maintenance mode is enabled (staff JWT still allowed)
+ */
+function blockIfMaintenance(req, res, next) {
+  const maintenance = readMaintenance();
+  if (!maintenance.enabled) return next();
+
+  const payload = extractToken(req);
+  if (payload && (payload.role === "master" || payload.role === "operator")) {
+    return next();
+  }
+
+  return res.status(503).json({
+    ok: false,
+    code: "MAINTENANCE",
+    message: maintenance.message,
+    maintenance: true,
+  });
+}
+
+/**
+ * GET /maintenance
+ * Public maintenance status
+ */
+app.get("/maintenance", (req, res) => {
+  const maintenance = readMaintenance();
+  res.json({ ok: true, ...maintenance });
+});
+
+/**
+ * POST /maintenance
+ * Enable/disable maintenance (staff login required)
+ */
+app.post("/maintenance", requireStaff, (req, res) => {
+  const current = readMaintenance();
+  const enabled = !!req.body?.enabled;
+  const message =
+    typeof req.body?.message === "string" ? req.body.message : current.message;
+  const next = writeMaintenance({ enabled, message });
+  console.log(`[Maintenance] enabled=${next.enabled} by ${req.user?.role || "unknown"}`);
+  res.json({ ok: true, ...next });
+});
+
+// Public tournament/state APIs respect maintenance mode
+app.use((req, res, next) => {
+  if (req.path === "/state" || req.path.startsWith("/tournaments")) {
+    return blockIfMaintenance(req, res, next);
+  }
+  return next();
 });
 
 /**
