@@ -253,9 +253,10 @@ export function AutomatenScreen({
   const nextMatchIds = new Set(Object.values(nextAssignments));
 
   // *************************
-  // automatische Verteilung
+  // automatische Verteilung (debounced, ohne automats-Dep → weniger Update-Loops)
   // *************************
   useEffect(() => {
+    const timer = setTimeout(() => {
     setAutomats((prevAutos) => {
       // wir klonen die Match‑Objekte nur bei Bedarf
       const matchesCopy: Record<string, MatchNode> = { ...matches };
@@ -508,7 +509,9 @@ export function AutomatenScreen({
       }
       return automatChanged ? updatedAutos : prevAutos;
     });
-  }, [matches, automats, mode]);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [matches, mode]);
 
   const toggleActive = (id: number) =>
     setAutomats((prev) =>
