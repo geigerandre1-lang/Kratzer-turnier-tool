@@ -20,7 +20,9 @@ import {
   buildKratzerRound,
   completeKratzerMatch,
   getActivePlayers,
+  getDisplayLifeTotal,
   getKratzerWinner,
+  getLifeDisplay,
   initializeKratzerLives,
   validatePlacements,
   type KratzerLives,
@@ -1230,29 +1232,31 @@ const exportTournament = () => {
   })();
 
   const calculateKratzerStandings = () => {
+    const total = getDisplayLifeTotal(maxKratzer);
     return [...players]
       .map((p) => {
         const k = kratzerLives[p.name] ?? 0;
-        const eliminated = k >= maxKratzer;
-        const remaining = Math.max(0, maxKratzer - k);
+        const display = getLifeDisplay(k, maxKratzer);
         return {
           id: p.id,
-          name: p.name,
-          points: eliminated ? 0 : remaining,
-          wins: remaining,
+          name: `${p.name} (${display.label})`,
+          // Punkte-Spalte: verbleibende Leben (0 bei Schwimmt/Ausgeschieden)
+          points: display.remaining,
+          wins: display.remaining,
           losses: k,
-          legsFor: k,
-          legsAgainst: maxKratzer,
-          legDiff: remaining,
+          legsFor: display.remaining,
+          legsAgainst: total,
+          legDiff: display.remaining,
+          _kratzer: k,
+          _eliminated: display.status === "eliminated",
         };
       })
       .sort((a, b) => {
-        const aOut = a.points === 0 && (kratzerLives[a.name] ?? 0) >= maxKratzer;
-        const bOut = b.points === 0 && (kratzerLives[b.name] ?? 0) >= maxKratzer;
-        if (aOut !== bOut) return aOut ? 1 : -1;
-        if (a.losses !== b.losses) return a.losses - b.losses;
+        if (a._eliminated !== b._eliminated) return a._eliminated ? 1 : -1;
+        if (a._kratzer !== b._kratzer) return a._kratzer - b._kratzer;
         return a.name.localeCompare(b.name);
-      });
+      })
+      .map(({ _kratzer, _eliminated, ...row }) => row);
   };
 
   const openResultModal = (matchId: string) => {

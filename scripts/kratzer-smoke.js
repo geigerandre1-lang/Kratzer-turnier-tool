@@ -113,6 +113,26 @@ assert(
 const shuffled = shuffleNames(["A", "B", "C", "D"], () => 0.1);
 assert(shuffled.length === 4, "Shuffle behält Länge");
 
+function getDisplayLifeTotal(maxKratzer) {
+  return Math.max(1, maxKratzer - 1);
+}
+function getLifeDisplay(kratzer, maxKratzer) {
+  const total = getDisplayLifeTotal(maxKratzer);
+  if (kratzer >= maxKratzer) return { status: "eliminated", label: "Ausgeschieden" };
+  if (kratzer === maxKratzer - 1) return { status: "swimming", label: "Schwimmt" };
+  const remaining = Math.max(0, total - kratzer);
+  if (remaining <= 1) return { status: "low", label: `${remaining}/${total}` };
+  if (remaining >= total) return { status: "full", label: `${remaining}/${total}` };
+  return { status: "ok", label: `${remaining}/${total}` };
+}
+
+assert(getLifeDisplay(0, 4).label === "3/3" && getLifeDisplay(0, 4).status === "full", "0 Kratzer → 3/3 grün");
+assert(getLifeDisplay(1, 4).label === "2/3", "1 Kratzer → 2/3");
+assert(getLifeDisplay(2, 4).label === "1/3" && getLifeDisplay(2, 4).status === "low", "2 Kratzer → 1/3 orange");
+assert(getLifeDisplay(3, 4).label === "Schwimmt", "3 Kratzer → Schwimmt");
+assert(getLifeDisplay(4, 4).label === "Ausgeschieden", "4 Kratzer → Ausgeschieden");
+assert(getLifeDisplay(0, 5).label === "4/4", "Max 5 → Start 4/4");
+
 if (failed > 0) {
   console.error(`\n${failed} Fehler`);
   process.exit(1);

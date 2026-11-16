@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { MatchNode, Player } from "../types";
 import {
   getActivePlayers,
-  isSwimming,
+  getLifeDisplay,
   type KratzerLives,
   type KratzerSettings,
 } from "../core/kratzer";
@@ -37,17 +37,18 @@ export const KratzerScreen: React.FC<KratzerScreenProps> = ({
     return [...players]
       .map((p) => {
         const k = lives[p.name] ?? 0;
-        const eliminated = k >= settings.maxKratzer;
+        const display = getLifeDisplay(k, settings.maxKratzer);
         return {
           name: p.name,
           kratzer: k,
-          eliminated,
-          swimming: !eliminated && isSwimming(k, settings.maxKratzer),
+          display,
           startKratzer: p.startKratzer ?? 0,
         };
       })
       .sort((a, b) => {
-        if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;
+        const aOut = a.display.status === "eliminated";
+        const bOut = b.display.status === "eliminated";
+        if (aOut !== bOut) return aOut ? 1 : -1;
         if (a.kratzer !== b.kratzer) return a.kratzer - b.kratzer;
         return a.name.localeCompare(b.name);
       });
@@ -112,7 +113,7 @@ export const KratzerScreen: React.FC<KratzerScreenProps> = ({
             border: "1px solid #333",
           }}
         >
-          <h3 style={{ marginTop: 0 }}>Leben / Kratzer</h3>
+          <h3 style={{ marginTop: 0 }}>Leben</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {standings.map((s) => (
               <div
@@ -123,22 +124,26 @@ export const KratzerScreen: React.FC<KratzerScreenProps> = ({
                   alignItems: "center",
                   padding: "0.4rem 0.55rem",
                   borderRadius: 6,
-                  background: s.eliminated
-                    ? "#3a1a1a"
-                    : s.swimming
-                    ? "#3a2f10"
-                    : "#2a2a2a",
-                  opacity: s.eliminated ? 0.65 : 1,
+                  background:
+                    s.display.status === "eliminated"
+                      ? "#3a1a1a"
+                      : s.display.status === "swimming"
+                      ? "#10253a"
+                      : s.display.status === "low"
+                      ? "#3a2a10"
+                      : "#2a2a2a",
+                  opacity: s.display.status === "eliminated" ? 0.7 : 1,
                   fontSize: 13,
                 }}
               >
-                <span>
-                  {s.name}
-                  {s.swimming ? " · Schwimmen" : ""}
-                  {s.eliminated ? " · raus" : ""}
-                </span>
-                <span style={{ fontWeight: 700 }}>
-                  {s.kratzer}/{settings.maxKratzer}
+                <span>{s.name}</span>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: s.display.color,
+                  }}
+                >
+                  {s.display.label}
                 </span>
               </div>
             ))}
@@ -226,8 +231,24 @@ export const KratzerScreen: React.FC<KratzerScreenProps> = ({
                       · {losers} Verlierer
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, marginBottom: 8 }}>
-                    {group.join(" · ")}
+                  <div
+                    style={{
+                      fontSize: 14,
+                      marginBottom: 8,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 8,
+                    }}
+                  >
+                    {group.map((name) => {
+                      const d = getLifeDisplay(lives[name] ?? 0, settings.maxKratzer);
+                      return (
+                        <span key={name}>
+                          {name}{" "}
+                          <span style={{ color: d.color, fontWeight: 600 }}>({d.label})</span>
+                        </span>
+                      );
+                    })}
                   </div>
                   {m.winner && m.placements && (
                     <div style={{ fontSize: 13, color: "#ccc", marginBottom: 8 }}>

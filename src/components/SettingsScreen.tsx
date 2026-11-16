@@ -392,6 +392,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <small style={{ display: "block", color: "#bbb", marginBottom: 16 }}>
         Gruppengröße kommt aus dem Feld oben (3–6 empfohlen). Ab unter 12 Spielern
         automatisch kleinere Gruppen und 1 Verlierer. Start-Kratzer pro Spieler: 0–2.
+        Leben-Anzeige bei Max 4: 3/3 (grün) → 2/3 → 1/3 (orange) → Schwimmt (blau) →
+        Ausgeschieden (rot).
       </small>
 
       {/* Punkteschlüssel + Export/Import */}

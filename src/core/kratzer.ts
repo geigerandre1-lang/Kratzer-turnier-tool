@@ -40,6 +40,86 @@ export function isSwimming(kratzer: number, maxKratzer: number): boolean {
   return kratzer === maxKratzer - 1;
 }
 
+/** Anzeigbare Leben = Max-Kratzer − 1 (bei 4: 3/3 → 2/3 → 1/3 → Schwimmt → Ausgeschieden). */
+export function getDisplayLifeTotal(maxKratzer: number): number {
+  return Math.max(1, maxKratzer - 1);
+}
+
+export type LifeDisplayStatus =
+  | "full"
+  | "ok"
+  | "low"
+  | "swimming"
+  | "eliminated";
+
+export type LifeDisplay = {
+  status: LifeDisplayStatus;
+  /** z.B. "3/3", "1/3", "Schwimmt", "Ausgeschieden" */
+  label: string;
+  /** verbleibende Zähler-Leben vor Schwimmen; 0 bei Schwimmen/Ausgeschieden */
+  remaining: number;
+  total: number;
+  color: string;
+};
+
+/**
+ * Leben-Anzeige aus aktuellem Kratzer-Stand.
+ * Beispiel maxKratzer=4: 0→3/3 grün, 1→2/3, 2→1/3 orange, 3→Schwimmt blau, 4→Ausgeschieden rot.
+ */
+export function getLifeDisplay(kratzer: number, maxKratzer: number): LifeDisplay {
+  const total = getDisplayLifeTotal(maxKratzer);
+  const k = Math.max(0, kratzer);
+
+  if (k >= maxKratzer) {
+    return {
+      status: "eliminated",
+      label: "Ausgeschieden",
+      remaining: 0,
+      total,
+      color: "#f44336",
+    };
+  }
+
+  if (isSwimming(k, maxKratzer)) {
+    return {
+      status: "swimming",
+      label: "Schwimmt",
+      remaining: 0,
+      total,
+      color: "#2196F3",
+    };
+  }
+
+  const remaining = Math.max(0, total - k);
+  if (remaining <= 1) {
+    return {
+      status: "low",
+      label: `${remaining}/${total}`,
+      remaining,
+      total,
+      color: "#FF9800",
+    };
+  }
+
+  if (remaining >= total) {
+    return {
+      status: "full",
+      label: `${remaining}/${total}`,
+      remaining,
+      total,
+      color: "#4CAF50",
+    };
+  }
+
+  return {
+    status: "ok",
+    label: `${remaining}/${total}`,
+    remaining,
+    total,
+    color: "#eee",
+  };
+}
+
 /** Gruppengröße und Verliereranzahl an Restfeld anpassen. */
 export function resolveRoundParams(
   activeCount: number,
